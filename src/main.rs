@@ -24,19 +24,25 @@ fn main() {
 }
 
 #[test]
-fn test_group() {
+fn test_group_with_pad() {
     let data: Vec<u8> = vec![
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
         26, 27, 28, 29, 30, 31, 32,
     ];
+    assert!(data.len() % BLOCK_SIZE == 0);
     let grouped_data: Vec<[u8; BLOCK_SIZE]> = group(data);
-    assert_eq!(
-        grouped_data,
+    let expected =
         vec![
             [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-            [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
-        ]
-    );
+            [
+                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+            ],
+        ];
+    assert_eq!(grouped_data, expected);
+    assert_eq!(grouped_data.len(), 2);
+    for block in expected {
+        assert_eq!(block.len(), BLOCK_SIZE);
+    }
 }
 
 #[test]
@@ -49,13 +55,11 @@ fn test_ungroup() {
             ],
         ];
     let grouped_data: Vec<u8> = un_group(data);
-    assert_eq!(
-        grouped_data,
-        vec![
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32,
-        ]
-    );
+    let expected = vec![
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+        26, 27, 28, 29, 30, 31, 32,
+    ];
+    assert_eq!(grouped_data, expected);
 }
 /// Simple AES encryption
 /// Helper function to make the core AES block cipher easier to understand.
