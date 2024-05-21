@@ -11,10 +11,8 @@
 //! it is not secure and make the point that the most straight-forward approach isn't always the
 //! best, and can sometimes be trivially broken.
 
-use std::sync::{Arc, Mutex};
-
 use aes::{
-    cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
+    cipher::{generic_array::GenericArray, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
 };
 use rand::Rng;
@@ -25,6 +23,34 @@ const BLOCK_SIZE: usize = 16;
 
 fn main() {
     todo!("Maybe this should be a library crate. TBD");
+}
+
+#[test]
+fn test_ecb() {
+    let plain_text = "Polkadot Blockchain Academy";
+    let plain_text_bytes = plain_text.as_bytes().to_vec();
+
+    let mut rng = rand::thread_rng();
+    let key: [u8; BLOCK_SIZE] = array_init::array_init(|_| rng.gen::<u8>());
+    let encrypted = ecb_encrypt(plain_text_bytes.clone(), key);
+    let expected = ecb_decrypt(encrypted, key);
+
+    let expected_str = String::from_utf8(expected[..plain_text.len()].to_vec()).unwrap();
+    assert!(expected_str == plain_text);
+}
+
+#[test]
+fn test_cbc() {
+    let plain_text = "Polkadot Blockchain Academy";
+    let plain_text_bytes = plain_text.as_bytes().to_vec();
+
+    let mut rng = rand::thread_rng();
+    let key: [u8; BLOCK_SIZE] = array_init::array_init(|_| rng.gen::<u8>());
+    let encrypted = cbc_encrypt(plain_text_bytes.clone(), key);
+    let expected = cbc_decrypt(encrypted, key);
+
+    let expected_str = String::from_utf8(expected[..plain_text.len()].to_vec()).unwrap();
+    assert!(expected_str == plain_text);
 }
 
 #[test]
