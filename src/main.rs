@@ -293,7 +293,7 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
         .map(|(i, block)| {
             let mut nonce_counter: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
             nonce_counter.copy_from_slice(&nonce);
-            nonce_counter.copy_from_slice(&i.to_le_bytes());
+            nonce_counter[BLOCK_SIZE / 2..].copy_from_slice(&i.to_le_bytes());
 
             // encrypt the v and then XOR with the plain text block
             let encrypted_v = aes_encrypt(nonce_counter, &key);
