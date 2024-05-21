@@ -157,7 +157,10 @@ fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
 
 /// Does the opposite of the pad function.
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
-    todo!()
+    let removed_bytes = data.last().unwrap();
+    let end = BLOCK_SIZE - *removed_bytes as usize;
+
+    data[0..end].to_vec()
 }
 
 /// The first mode we will implement is the Electronic Code Book, or ECB mode.
@@ -234,7 +237,22 @@ fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+
+    let cipher_blocks = group(cipher_text);
+    let mut plain_text: Vec<u8> = Vec::new();
+
+    for index in (1..cipher_blocks.len()).rev() {
+        let decrypted_cypher = aes_decrypt(cipher_blocks[index], &key);
+        let mut message: Vec<u8> = decrypted_cypher
+            .iter()
+            .zip(cipher_blocks[index - 1].iter())
+            .map(|(&x1, &x2)| x1 ^ x2)
+            .collect();
+        plain_text.append(&mut message);
+    }
+    plain_text.reverse();
+
+    return plain_text;
 }
 
 /// Another mode which you can implement on your own is counter mode.
