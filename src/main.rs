@@ -11,11 +11,17 @@
 //! it is not secure and make the point that the most straight-forward approach isn't always the
 //! best, and can sometimes be trivially broken.
 
+use std::sync::{Arc, Mutex};
+
 use aes::{
     cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
 };
 use rand::Rng;
+use rayon::{
+    iter::{IndexedParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator},
+    spawn,
+};
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
@@ -276,19 +282,24 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 
     // Group the data into blocks
     let blocks = group(padded_text);
-    let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(blocks.len())
-        .build()
-        .unwrap();
+    let mut cipher_text: Vec<Vec<u8>> = Vec::new();
 
-    // Remember to generate a random nonce
-    for (counter, block) in blocks.iter().enumerate() {
-        pool.spawn(move || {
-            println!("Counter: {:?}", counter);
-        });
-    }
+    blocks
+        .into_par_iter()
+        .map(|block| {
+            let mut dummy: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            dummy[0] = 0 as u8;
+            let encrypted_counter = aes_encrypt(dummy, &key);
+            return encrypted_counter
+                .iter()
+                .zip(block.iter())
+                .map(|(&x1, &x2)| x1 ^ x2)
+                .collect();
+        })
+        .collect_into_vec(&mut cipher_text);
 
-    todo!()
+    let result: Vec<u8> = cipher_text.into_iter().flatten().collect::<Vec<u8>>();
+    return result;
 }
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
