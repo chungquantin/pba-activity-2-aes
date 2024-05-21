@@ -24,7 +24,17 @@ fn main() {
 }
 
 #[test]
-fn test_group_with_pad() {
+fn test_unpad() {
+    let init_data = vec![1, 2, 4, 5];
+
+    let data = pad(init_data.clone());
+    let result = un_pad(data.clone());
+
+    assert_eq!(init_data, result);
+}
+
+#[test]
+fn test_group() {
     let data: Vec<u8> = vec![
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
         26, 27, 28, 29, 30, 31, 32,
@@ -148,7 +158,10 @@ fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
 
 /// Does the opposite of the pad function.
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
-    todo!()
+    let removed_bytes = data.last().unwrap();
+    let end = BLOCK_SIZE - *removed_bytes as usize;
+
+    data[0..end].to_vec()
 }
 
 /// The first mode we will implement is the Electronic Code Book, or ECB mode.
