@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 aes = "0.8.1"
+array-init = "2.1.0"
+rand = "0.8.5"
