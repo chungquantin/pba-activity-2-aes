@@ -16,6 +16,7 @@ use aes::{
     Aes128,
 };
 use rand::Rng;
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
@@ -237,7 +238,6 @@ fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-
     let cipher_blocks = group(cipher_text);
     let mut plain_text: Vec<u8> = Vec::new();
 
@@ -277,5 +277,25 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 }
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+    let group = group(cipher_text);
+    let nonce = group[0];
+
+    group[1..]
+        .into_par_iter()
+        .enumerate()
+        .map(|(i, block)| {
+            let mut nonce_counter: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            nonce_counter.copy_from_slice(&nonce);
+            nonce_counter[BLOCK_SIZE / 2..].copy_from_slice(&i.to_be_bytes());
+
+            let mask = aes_encrypt(nonce_counter, &key);
+
+            block
+                .into_iter()
+                .zip(mask)
+                .map(|(a, b)| a ^ b)
+                .collect::<Vec<u8>>()
+        })
+        .flatten()
+        .collect()
 }
