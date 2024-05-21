@@ -95,7 +95,13 @@ fn group(data: Vec<u8>) -> Vec<[u8; BLOCK_SIZE]> {
 
 /// Does the opposite of the group function
 fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
-    todo!()
+    let mut ungrouped : Vec<u8> = vec![];
+    for block in blocks {
+        for data in block.to_vec() {
+            ungrouped.push(data);
+        }
+    }
+    return ungrouped;
 }
 
 /// Does the opposite of the pad function.
