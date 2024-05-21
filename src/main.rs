@@ -280,17 +280,24 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Pad the data to the correct length
     let padded_text = pad(plain_text);
 
+    let mut rng = rand::thread_rng();
+    // random nonce which is 64 bits long
+    let nonce: [u8; BLOCK_SIZE] = array_init::array_init(|_| rng.gen::<u8>());
     // Group the data into blocks
     let blocks = group(padded_text);
     let mut cipher_text: Vec<Vec<u8>> = Vec::new();
 
     blocks
         .into_par_iter()
-        .map(|block| {
-            let mut dummy: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
-            dummy[0] = 0 as u8;
-            let encrypted_counter = aes_encrypt(dummy, &key);
-            return encrypted_counter
+        .enumerate()
+        .map(|(i, block)| {
+            let mut nonce_counter: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            nonce_counter.copy_from_slice(&nonce);
+            nonce_counter[BLOCK_SIZE / 2..].copy_from_slice(&i.to_le_bytes());
+
+            // encrypt the v and then XOR with the plain text block
+            let encrypted_v = aes_encrypt(nonce_counter, &key);
+            return encrypted_v
                 .iter()
                 .zip(block.iter())
                 .map(|(&x1, &x2)| x1 ^ x2)
