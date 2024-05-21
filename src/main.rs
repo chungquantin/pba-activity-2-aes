@@ -23,6 +23,40 @@ fn main() {
     todo!("Maybe this should be a library crate. TBD");
 }
 
+#[test]
+fn test_group() {
+    let data: Vec<u8> = vec![
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+        26, 27, 28, 29, 30, 31, 32,
+    ];
+    let grouped_data: Vec<[u8; BLOCK_SIZE]> = group(data);
+    assert_eq!(
+        grouped_data,
+        vec![
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+            [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+        ]
+    );
+}
+
+#[test]
+fn test_ungroup() {
+    let data: Vec<[u8; BLOCK_SIZE]> =
+        vec![
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+            [
+                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+            ],
+        ];
+    let grouped_data: Vec<u8> = un_group(data);
+    assert_eq!(
+        grouped_data,
+        vec![
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        ]
+    );
+}
 /// Simple AES encryption
 /// Helper function to make the core AES block cipher easier to understand.
 fn aes_encrypt(data: [u8; BLOCK_SIZE], key: &[u8; BLOCK_SIZE]) -> [u8; BLOCK_SIZE] {
@@ -99,7 +133,7 @@ fn group(mut data: Vec<u8>) -> Vec<[u8; BLOCK_SIZE]> {
 
 /// Does the opposite of the group function
 fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
-    let mut ungrouped : Vec<u8> = vec![];
+    let mut ungrouped: Vec<u8> = vec![];
     for block in blocks {
         for data in block.to_vec() {
             ungrouped.push(data);
