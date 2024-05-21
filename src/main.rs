@@ -15,6 +15,7 @@ use aes::{
     cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
 };
+use rand::Rng;
 
 ///We're using AES 128 which has 16-byte (128 bit) blocks.
 const BLOCK_SIZE: usize = 16;
@@ -99,7 +100,7 @@ fn group(mut data: Vec<u8>) -> Vec<[u8; BLOCK_SIZE]> {
 
 /// Does the opposite of the group function
 fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
-    let mut ungrouped : Vec<u8> = vec![];
+    let mut ungrouped: Vec<u8> = vec![];
     for block in blocks {
         for data in block.to_vec() {
             ungrouped.push(data);
@@ -169,8 +170,21 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// is inserted as the first block of ciphertext.
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random initialization vector for the first block.
+    let mut rng = rand::thread_rng();
+    let mut nonce = array_init::array_init(|_| rng.gen::<u8>());
+    let groups = group(plain_text);
+    let mut cypher_text = Vec::with_capacity(groups.len() * BLOCK_SIZE);
 
-    todo!()
+    for block in groups {
+        assert_eq!(block.len(), nonce.len());
+        let iter = block.into_iter().zip(nonce).map(|(byte, mask)| byte ^ mask);
+        let block = array_init::from_iter(iter).unwrap_or_default();
+
+        nonce = aes_encrypt(block, &key);
+        cypher_text.extend_from_slice(&nonce);
+    }
+
+    cypher_text
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
