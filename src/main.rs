@@ -115,12 +115,38 @@ fn un_pad(data: Vec<u8>) -> Vec<u8> {
 /// One good thing about this mode is that it is parallelizable. But to see why it is
 /// insecure look at: https://www.ubiqsecurity.com/wp-content/uploads/2022/02/ECB2.png
 fn ecb_encrypt(plain_text: Vec<u8>, key: [u8; 16]) -> Vec<u8> {
-    todo!()
+    // Pad the data to the correct length
+    let padded_text = pad(plain_text);
+
+    // Group the data into blocks
+    let blocks = group(padded_text);
+
+    // Encrypt each block
+    let mut cipher_text = Vec::new();
+
+    for block in blocks {
+        let encrypted_block = aes_encrypt(block, &key);
+        cipher_text.extend_from_slice(&encrypted_block);
+    }
+
+    cipher_text
 }
 
 /// Opposite of ecb_encrypt.
 fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+    // Group the data into blocks
+    let blocks = group(cipher_text);
+
+    // Decrypt each block
+    let mut plain_text = Vec::new();
+
+    for block in blocks {
+        let decrypted_block = aes_decrypt(block, &key);
+        plain_text.extend_from_slice(&decrypted_block);
+    }
+
+    // Unpad the data
+    un_pad(plain_text)
 }
 
 /// The next mode, which you can implement on your own is cipherblock chaining.
