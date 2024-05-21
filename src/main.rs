@@ -11,6 +11,8 @@
 //! it is not secure and make the point that the most straight-forward approach isn't always the
 //! best, and can sometimes be trivially broken.
 
+use std::sync::{Arc, Mutex};
+
 use aes::{
     cipher::{generic_array::GenericArray, BlockCipher, BlockDecrypt, BlockEncrypt, KeyInit},
     Aes128,
@@ -272,8 +274,33 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// Once again, you will need to generate a random nonce which is 64 bits long. This should be
 /// inserted as the first block of the ciphertext.
 fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    // Remember to generate a random nonce
-    todo!()
+    // Pad the data to the correct length
+    let padded_text = pad(plain_text);
+
+    let mut rng = rand::thread_rng();
+    // random nonce which is 64 bits long
+    let nonce: [u8; BLOCK_SIZE] = array_init::array_init(|_| rng.gen::<u8>());
+    // Group the data into blocks
+    let blocks = group(padded_text);
+
+    blocks
+        .into_par_iter()
+        .enumerate()
+        .map(|(i, block)| {
+            let mut nonce_counter: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            nonce_counter.copy_from_slice(&nonce);
+            nonce_counter[BLOCK_SIZE / 2..].copy_from_slice(&i.to_le_bytes());
+
+            // encrypt the v and then XOR with the plain text block
+            let encrypted_v = aes_encrypt(nonce_counter, &key);
+            encrypted_v
+                .iter()
+                .zip(block.iter())
+                .map(|(&x1, &x2)| x1 ^ x2)
+                .collect::<Vec<u8>>()
+        })
+        .flatten()
+        .collect()
 }
 
 fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
@@ -293,7 +320,7 @@ fn ctr_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
             block
                 .into_iter()
                 .zip(mask)
-                .map(|(a, b)| a ^ b)
+                .map(|(x1, x2)| x1 ^ x2)
                 .collect::<Vec<u8>>()
         })
         .flatten()
