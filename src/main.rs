@@ -237,7 +237,6 @@ fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-
     let cipher_blocks = group(cipher_text);
     let mut plain_text: Vec<u8> = Vec::new();
 
@@ -272,7 +271,23 @@ fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 /// Once again, you will need to generate a random nonce which is 64 bits long. This should be
 /// inserted as the first block of the ciphertext.
 fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
+    // Pad the data to the correct length
+    let padded_text = pad(plain_text);
+
+    // Group the data into blocks
+    let blocks = group(padded_text);
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(blocks.len())
+        .build()
+        .unwrap();
+
     // Remember to generate a random nonce
+    for (counter, block) in blocks.iter().enumerate() {
+        pool.spawn(move || {
+            println!("Counter: {:?}", counter);
+        });
+    }
+
     todo!()
 }
 
