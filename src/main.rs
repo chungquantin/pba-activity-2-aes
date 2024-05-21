@@ -280,6 +280,9 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Pad the data to the correct length
     let padded_text = pad(plain_text);
 
+    let mut rng = rand::thread_rng();
+    // random nonce which is 64 bits long
+    let nonce: [u8; BLOCK_SIZE] = array_init::array_init(|_| rng.gen::<u8>());
     // Group the data into blocks
     let blocks = group(padded_text);
     let mut cipher_text: Vec<Vec<u8>> = Vec::new();
@@ -288,11 +291,20 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
         .into_par_iter()
         .enumerate()
         .map(|(i, block)| {
-            let mut dummy: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
-            dummy[0] = i as u8;
+            let mut counter: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            counter[0] = i as u8;
 
-            let encrypted_counter = aes_encrypt(dummy, &key);
-            return encrypted_counter
+            // concatenate by OR the nonce and counter
+            let mut v_slice: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
+            let v: Vec<u8> = nonce
+                .iter()
+                .zip(counter.iter())
+                .map(|(&x1, &x2)| x1 | x2)
+                .collect();
+            v_slice.copy_from_slice(&v[0..]);
+            // encrypt the v and then XOR with the plain text block
+            let encrypted_v = aes_encrypt(v_slice, &key);
+            return encrypted_v
                 .iter()
                 .zip(block.iter())
                 .map(|(&x1, &x2)| x1 ^ x2)
