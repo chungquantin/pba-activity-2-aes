@@ -79,7 +79,11 @@ fn pad(mut data: Vec<u8>) -> Vec<u8> {
 
 /// Groups the data into BLOCK_SIZE blocks. Assumes the data is already
 /// a multiple of the block size. If this is not the case, call `pad` first.
-fn group(data: Vec<u8>) -> Vec<[u8; BLOCK_SIZE]> {
+fn group(mut data: Vec<u8>) -> Vec<[u8; BLOCK_SIZE]> {
+    if data.len() % BLOCK_SIZE != 0 {
+        data = pad(data)
+    };
+
     let mut blocks = Vec::new();
     let mut i = 0;
     while i < data.len() {
