@@ -286,9 +286,11 @@ fn ctr_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 
     blocks
         .into_par_iter()
-        .map(|block| {
+        .enumerate()
+        .map(|(i, block)| {
             let mut dummy: [u8; BLOCK_SIZE] = [0; BLOCK_SIZE];
-            dummy[0] = 0 as u8;
+            dummy[0] = i as u8;
+
             let encrypted_counter = aes_encrypt(dummy, &key);
             return encrypted_counter
                 .iter()
