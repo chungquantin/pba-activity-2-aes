@@ -41,13 +41,12 @@ fn test_group() {
     ];
     assert!(data.len() % BLOCK_SIZE == 0);
     let grouped_data: Vec<[u8; BLOCK_SIZE]> = group(data);
-    let expected =
-        vec![
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-            [
-                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-            ],
-        ];
+    let expected = vec![
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        [
+            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        ],
+    ];
     assert_eq!(grouped_data, expected);
     assert_eq!(grouped_data.len(), 2);
     for block in expected {
@@ -57,13 +56,12 @@ fn test_group() {
 
 #[test]
 fn test_ungroup() {
-    let data: Vec<[u8; BLOCK_SIZE]> =
-        vec![
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-            [
-                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-            ],
-        ];
+    let data: Vec<[u8; BLOCK_SIZE]> = vec![
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        [
+            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        ],
+    ];
     let grouped_data: Vec<u8> = un_group(data);
     let expected = vec![
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
@@ -225,7 +223,22 @@ fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    todo!()
+
+    let cipher_blocks = group(cipher_text);
+    let mut plain_text: Vec<u8> = Vec::new();
+
+    for index in (1..cipher_blocks.len()).rev() {
+        let decrypted_cypher = aes_decrypt(cipher_blocks[index], &key);
+        let mut message: Vec<u8> = decrypted_cypher
+            .iter()
+            .zip(cipher_blocks[index - 1].iter())
+            .map(|(&x1, &x2)| x1 ^ x2)
+            .collect();
+        plain_text.append(&mut message);
+    }
+    plain_text.reverse();
+
+    return plain_text;
 }
 
 /// Another mode which you can implement on your own is counter mode.
