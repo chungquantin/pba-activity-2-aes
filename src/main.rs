@@ -47,9 +47,24 @@ fn test_cbc() {
     let mut rng = rand::thread_rng();
     let key: [u8; BLOCK_SIZE] = array_init::array_init(|_| rng.gen::<u8>());
     let encrypted = cbc_encrypt(plain_text_bytes.clone(), key);
-    let expected = cbc_decrypt(encrypted, key);
+    let expected = cbc_decrypt(encrypted.clone(), key);
 
-    let expected_str = String::from_utf8(expected[..plain_text.len()].to_vec()).unwrap();
+    println!("{:?} == {:?}", encrypted, expected);
+    let expected_str = String::from_utf8(expected).unwrap();
+    assert!(expected_str == plain_text);
+}
+
+#[test]
+fn test_ctr() {
+    let plain_text = "Polkadot Blockchain Academy";
+    let plain_text_bytes = plain_text.as_bytes().to_vec();
+
+    let mut rng = rand::thread_rng();
+    let key: [u8; BLOCK_SIZE] = array_init::array_init(|_| rng.gen::<u8>());
+    let encrypted = ctr_encrypt(plain_text_bytes.clone(), key);
+    let expected = ctr_decrypt(encrypted.clone(), key);
+
+    let expected_str = String::from_utf8(expected).unwrap();
     assert!(expected_str == plain_text);
 }
 
@@ -71,12 +86,13 @@ fn test_group() {
     ];
     assert!(data.len() % BLOCK_SIZE == 0);
     let grouped_data: Vec<[u8; BLOCK_SIZE]> = group(data);
-    let expected = vec![
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-        [
-            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-        ],
-    ];
+    let expected =
+        vec![
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+            [
+                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+            ],
+        ];
     assert_eq!(grouped_data, expected);
     assert_eq!(grouped_data.len(), 2);
     for block in expected {
@@ -86,12 +102,13 @@ fn test_group() {
 
 #[test]
 fn test_ungroup() {
-    let data: Vec<[u8; BLOCK_SIZE]> = vec![
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-        [
-            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-        ],
-    ];
+    let data: Vec<[u8; BLOCK_SIZE]> =
+        vec![
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+            [
+                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+            ],
+        ];
     let grouped_data: Vec<u8> = un_group(data);
     let expected = vec![
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
@@ -186,10 +203,15 @@ fn un_group(blocks: Vec<[u8; BLOCK_SIZE]>) -> Vec<u8> {
 
 /// Does the opposite of the pad function.
 fn un_pad(data: Vec<u8>) -> Vec<u8> {
-    let removed_bytes = data.last().unwrap();
-    let end = BLOCK_SIZE - *removed_bytes as usize;
+    let mut data = data;
+    let last_byte = *data.last().unwrap() as usize;
 
-    data[0..end].to_vec()
+    match last_byte == BLOCK_SIZE {
+        true => data.truncate(data.len() - BLOCK_SIZE),
+        false => data.truncate(data.len() - last_byte),
+    }
+
+    data
 }
 
 /// The first mode we will implement is the Electronic Code Book, or ECB mode.
