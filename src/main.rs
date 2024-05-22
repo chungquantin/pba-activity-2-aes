@@ -86,13 +86,12 @@ fn test_group() {
     ];
     assert!(data.len() % BLOCK_SIZE == 0);
     let grouped_data: Vec<[u8; BLOCK_SIZE]> = group(data);
-    let expected =
-        vec![
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-            [
-                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-            ],
-        ];
+    let expected = vec![
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        [
+            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        ],
+    ];
     assert_eq!(grouped_data, expected);
     assert_eq!(grouped_data.len(), 2);
     for block in expected {
@@ -102,13 +101,12 @@ fn test_group() {
 
 #[test]
 fn test_ungroup() {
-    let data: Vec<[u8; BLOCK_SIZE]> =
-        vec![
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-            [
-                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-            ],
-        ];
+    let data: Vec<[u8; BLOCK_SIZE]> = vec![
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+        [
+            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        ],
+    ];
     let grouped_data: Vec<u8> = un_group(data);
     let expected = vec![
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
@@ -271,38 +269,87 @@ fn ecb_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
 fn cbc_encrypt(plain_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
     // Remember to generate a random initialization vector for the first block.
     let mut rng = rand::thread_rng();
-    let mut nonce = array_init::array_init(|_| rng.gen::<u8>());
-    let groups = group(plain_text);
-    let mut cypher_text = Vec::with_capacity(groups.len() * BLOCK_SIZE);
+    let mut iv = [0u8; BLOCK_SIZE];
+    rng.fill(&mut iv[..]);
 
-    for block in groups {
-        assert_eq!(block.len(), nonce.len());
-        let iter = block.into_iter().zip(nonce).map(|(byte, mask)| byte ^ mask);
-        let block = array_init::from_iter(iter).unwrap_or_default();
+    // Pad the data
+    let padded_data = pad(plain_text);
 
-        nonce = aes_encrypt(block, &key);
-        cypher_text.extend_from_slice(&nonce);
+    // Group the data into blocks
+    let blocks = group(padded_data);
+
+    // Encrypt each block
+    let mut encrypted_blocks: Vec<[u8; BLOCK_SIZE]> = Vec::new();
+
+    // XOR the first block with the IV
+    let mut previous_block = iv;
+
+    for block in blocks {
+        // XOR the block with the previous block
+        let xored_block: [u8; BLOCK_SIZE] = block
+            .iter()
+            .zip(previous_block.iter())
+            .map(|(a, b)| a ^ b)
+            .collect::<Vec<u8>>()
+            .try_into()
+            .unwrap();
+
+        // Encrypt the xored block
+        let encrypted_block = aes_encrypt(xored_block, &key);
+
+        // Update the previous block
+        previous_block = encrypted_block;
+
+        encrypted_blocks.push(encrypted_block);
     }
 
-    cypher_text
+    // Ungroup the blocks
+    let encrypted_data = un_group(encrypted_blocks);
+
+    // Insert the IV as the first block of the ciphertext
+    let mut encrypted_data_with_iv = iv.to_vec();
+
+    encrypted_data_with_iv.extend(encrypted_data);
+
+    encrypted_data_with_iv
 }
 
 fn cbc_decrypt(cipher_text: Vec<u8>, key: [u8; BLOCK_SIZE]) -> Vec<u8> {
-    let cipher_blocks = group(cipher_text);
-    let mut plain_text: Vec<u8> = Vec::new();
+    // Group the data into blocks
+    let blocks = group(cipher_text);
 
-    for index in (1..cipher_blocks.len()).rev() {
-        let decrypted_cypher = aes_decrypt(cipher_blocks[index], &key);
-        let mut message: Vec<u8> = decrypted_cypher
+    // Decrypt each block
+    let mut decrypted_blocks: Vec<[u8; BLOCK_SIZE]> = Vec::new();
+
+    // XOR the first block with the IV
+    let iv = blocks[0];
+
+    let mut previous_block = iv;
+
+    for block in blocks.iter().skip(1) {
+        // Decrypt the block
+        let decrypted_block = aes_decrypt(*block, &key);
+
+        // XOR the decrypted block with the previous block
+        let xored_block: [u8; BLOCK_SIZE] = decrypted_block
             .iter()
-            .zip(cipher_blocks[index - 1].iter())
-            .map(|(&x1, &x2)| x1 ^ x2)
-            .collect();
-        plain_text.append(&mut message);
-    }
-    plain_text.reverse();
+            .zip(previous_block.iter())
+            .map(|(a, b)| a ^ b)
+            .collect::<Vec<u8>>()
+            .try_into()
+            .unwrap();
 
-    return plain_text;
+        // Update the previous block
+        previous_block = *block;
+
+        decrypted_blocks.push(xored_block);
+    }
+
+    // Ungroup the blocks
+    let decrypted_data = un_group(decrypted_blocks);
+
+    // Unpad the data
+    un_pad(decrypted_data)
 }
 
 /// Another mode which you can implement on your own is counter mode.
